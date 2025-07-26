@@ -1,0 +1,5 @@
+torch==2.1.0
+transformers==4.36.0
+PyMuPDF==1.24.1
+numpy==1.24.3
+accelerate==0.25.0
