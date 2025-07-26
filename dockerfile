@@ -11,18 +11,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download and cache the model during build
-RUN python -c "
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import os
-print('Downloading Qwen2.5-0.5B-Instruct model...')
-tokenizer = AutoTokenizer.from_pretrained('Qwen/Qwen2.5-0.5B-Instruct')
-model = AutoModelForCausalLM.from_pretrained('Qwen/Qwen2.5-0.5B-Instruct')
-os.makedirs('/app/models/qwen', exist_ok=True)
-tokenizer.save_pretrained('/app/models/qwen')
-model.save_pretrained('/app/models/qwen')
-print('Model cached successfully')
-"
+RUN python -c "from transformers import AutoTokenizer, AutoModelForCausalLM; \
+import os; \
+print('Downloading Qwen2.5-0.5B-Instruct model...'); \
+tokenizer = AutoTokenizer.from_pretrained('Qwen/Qwen2.5-0.5B-Instruct', trust_remote_code=True); \
+model = AutoModelForCausalLM.from_pretrained('Qwen/Qwen2.5-0.5B-Instruct', trust_remote_code=True); \
+os.makedirs('/app/models/qwen', exist_ok=True); \
+tokenizer.save_pretrained('/app/models/qwen'); \
+model.save_pretrained('/app/models/qwen'); \
+print('Model cached successfully')"
+
 
 # Copy source code
 COPY ./src /app/src
