@@ -1,7 +1,7 @@
 import os
 import time
 from document_processor import MultiDocumentProcessor
-from persona_intelligence import PersonaIntelligenceEngine
+from persona_intelligence import HybridPersonaIntelligence as PersonaIntelligenceEngine
 from utils import (
     validate_output_format, save_json_output, read_input_configuration,
     get_pdf_files_from_config, create_metadata_from_config

@@ -1,234 +1,203 @@
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModel
 import json
 import re
-from typing import Dict, List, Any
 import os
+import numpy as np
+from typing import Dict, List, Any
+from sklearn.metrics.pairwise import cosine_similarity
 
-class PersonaIntelligenceEngine:
-    """Advanced persona-driven document analysis using Qwen2.5-0.5B-Instruct."""
+class HybridPersonaIntelligence:
+    """Truly generic hybrid system with NO hardcoded document-specific rules."""
     
-    def __init__(self, model_path: str = "./models/qwen"):
-        """Initialize the Qwen model for persona analysis."""
-        print("Loading Qwen2.5-0.5B-Instruct model...")
+    def __init__(self, model_path: str = "/app/models/distilbert"):
+        """Initialize generic hybrid system."""
+        print("🚀 Initializing Generic Persona Intelligence System")
         
-        # Load tokenizer and model
-        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            torch_dtype=torch.float32,
-            device_map="cpu",
-            trust_remote_code=True
-        )
-        
-        # Set model to evaluation mode
-        self.model.eval()
-        print("Model loaded successfully!")
-    
-    def analyze_documents_for_persona(self, documents: List[Dict], persona: str, job_to_be_done: str) -> Dict:
-        """Main analysis method that processes documents based on persona and job."""
-        
-        # Build comprehensive analysis prompt
-        analysis_prompt = self._build_comprehensive_prompt(documents, persona, job_to_be_done)
-        
-        # Generate analysis using Qwen
-        analysis_result = self._generate_analysis(analysis_prompt)
-        
-        # Parse and structure the output
-        structured_output = self._parse_qwen_output(analysis_result, documents)
-        
-        return structured_output
-    
-    def _build_comprehensive_prompt(self, documents: List[Dict], persona: str, job_to_be_done: str) -> str:
-        """Build a comprehensive prompt for Qwen analysis."""
-        
-        # Format documents for the prompt
-        doc_summaries = []
-        for i, doc in enumerate(documents, 1):
-            sections_text = ""
-            for j, section in enumerate(doc['sections'][:8]):  # Limit sections for prompt size
-                content_preview = section['content'][:400] + "..." if len(section['content']) > 400 else section['content']
-                sections_text += f"    Section: {section['title']} (Page {section['page']})\n    Content: {content_preview}\n\n"
-            
-            doc_summaries.append(f"Document: {doc['filename']}\n{sections_text}")
-        
-        documents_text = "\n".join(doc_summaries)
-        
-        prompt = f"""You are an expert document analyst specializing in persona-driven content extraction and ranking.
-
-PERSONA: {persona}
-JOB TO BE DONE: {job_to_be_done}
-
-DOCUMENT COLLECTION:
-{documents_text}
-
-Your task is to analyze these documents from the perspective of the specified persona and their specific job requirements. You need to:
-
-1. Identify the most relevant sections across all documents that would help accomplish the job
-2. Rank sections by importance (1 = most important, lower numbers = higher importance)
-3. Extract and refine key subsections with content specifically tailored for the persona
-
-Please provide your analysis in the following JSON format:
-
-{{
-    "section_ranking": [
-        {{
-            "document": "exact_filename.pdf",
-            "section_title": "exact section title from the document",
-            "importance_rank": ranking_number,
-            "page_number": page_number,
-            "relevance_reason": "why this section is important for the persona and job"
-        }}
-    ],
-    "refined_subsections": [
-        {{
-            "document": "exact_filename.pdf",
-            "page_number": page_number,
-            "refined_text": "detailed, refined content tailored specifically for the {persona} to accomplish: {job_to_be_done}",
-            "relevance_context": "why this content is valuable"
-        }}
-    ]
-}}
-
-Focus on practical, actionable information that directly supports the persona in completing their specific job. Prioritize sections that provide concrete guidance, specific details, and relevant insights."""
-
-        return prompt
-    
-    def _generate_analysis(self, prompt: str) -> str:
-        """Generate analysis using Qwen model."""
         try:
-            # Tokenize input
-            inputs = self.tokenizer(
-                prompt,
-                return_tensors="pt",
-                truncation=True,
-                max_length=3500  # Leave room for generation
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_path,
+                local_files_only=True
             )
             
-            # Generate response
-            with torch.no_grad():
-                outputs = self.model.generate(
-                    inputs.input_ids,
-                    max_length=inputs.input_ids.shape[1] + 2000,  # Allow for response
-                    temperature=0.1,  # Low temperature for consistency
-                    do_sample=True,
-                    pad_token_id=self.tokenizer.eos_token_id,
-                    eos_token_id=self.tokenizer.eos_token_id,
-                    repetition_penalty=1.1
-                )
+            self.model = AutoModel.from_pretrained(
+                model_path,
+                local_files_only=True
+            )
             
-            # Decode response
-            response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-            
-            # Extract just the generated part (after the prompt)
-            generated_text = response[len(prompt):].strip()
-            
-            return generated_text
+            self.model.eval()
+            print("✅ DistilBERT loaded successfully!")
             
         except Exception as e:
-            print(f"Error in generation: {e}")
-            return self._create_fallback_analysis()
+            print(f"Error loading DistilBERT: {e}")
+            raise RuntimeError(f"Failed to load DistilBERT: {e}")
     
-    def _parse_qwen_output(self, qwen_output: str, documents: List[Dict]) -> Dict:
-        """Parse Qwen output and structure it according to the required format."""
+    def analyze_documents_for_persona(self, documents: List[Dict], persona: str, job_to_be_done: str) -> Dict:
+        """Generic analysis that works for ANY persona and ANY documents."""
         
-        try:
-            # Try to extract JSON from the output
-            json_match = re.search(r'\{.*\}', qwen_output, re.DOTALL)
-            if json_match:
-                json_str = json_match.group()
-                parsed_json = json.loads(json_str)
-                
-                # Convert to required format
-                extracted_sections = []
-                subsection_analysis = []
-                
-                # Process section ranking
-                for section in parsed_json.get('section_ranking', [])[:15]:  # Limit to top 15
-                    extracted_sections.append({
-                        "document": section.get('document', ''),
-                        "section_title": section.get('section_title', ''),
-                        "importance_rank": section.get('importance_rank', 999),
-                        "page_number": section.get('page_number', 1)
-                    })
-                
-                # Process refined subsections
-                for subsection in parsed_json.get('refined_subsections', [])[:10]:  # Limit to top 10
-                    subsection_analysis.append({
-                        "document": subsection.get('document', ''),
-                        "refined_text": subsection.get('refined_text', ''),
-                        "page_number": subsection.get('page_number', 1)
-                    })
-                
-                # Sort sections by importance rank
-                extracted_sections.sort(key=lambda x: x['importance_rank'])
-                
-                return {
-                    "extracted_sections": extracted_sections,
-                    "subsection_analysis": subsection_analysis  # Corrected key name
-                }
-                
-        except (json.JSONDecodeError, KeyError) as e:
-            print(f"JSON parsing error: {e}")
-            
-        # Fallback: create analysis from available data
-        return self._create_fallback_structured_output(documents)
-    
-    def _create_fallback_analysis(self) -> str:
-        """Create a fallback analysis when generation fails."""
-        return """
-        {
-            "section_ranking": [
-                {
-                    "document": "document1.pdf",
-                    "section_title": "Introduction",
-                    "importance_rank": 1,
-                    "page_number": 1,
-                    "relevance_reason": "Provides foundational context"
-                }
-            ],
-            "refined_subsections": [
-                {
-                    "document": "document1.pdf",
-                    "page_number": 1,
-                    "refined_text": "Key concepts and background information relevant to the analysis.",
-                    "relevance_context": "Essential background"
-                }
-            ]
-        }
-        """
-    
-    def _create_fallback_structured_output(self, documents: List[Dict]) -> Dict:
-        """Create structured output when JSON parsing fails."""
-        extracted_sections = []
-        subsection_analysis = []
+        print(f"🎯 Generic analysis for {persona}: {job_to_be_done}")
         
-        # Create basic analysis from document sections
-        rank = 1
-        for doc in documents[:5]:  # Process first 5 documents
-            for section in doc['sections'][:3]:  # First 3 sections per doc
-                extracted_sections.append({
-                    "document": doc['filename'],
-                    "section_title": section['title'],
-                    "importance_rank": rank,
-                    "page_number": section['page']
-                })
-                
-                # Create refined text
-                refined_text = section['content'][:600] + "..." if len(section['content']) > 600 else section['content']
-                subsection_analysis.append({
-                    "document": doc['filename'],
-                    "refined_text": f"Key insights from {section['title']}: {refined_text}",
-                    "page_number": section['page']
-                })
-                
-                rank += 1
-                if rank > 10:  # Limit total sections
-                    break
-            if rank > 10:
-                break
+        # Extract keywords from persona and job (generic approach)
+        persona_keywords = self._extract_keywords(persona)
+        job_keywords = self._extract_keywords(job_to_be_done)
+        all_keywords = persona_keywords + job_keywords
+        
+        # Generic multi-stage analysis
+        stage1_sections = self._generic_content_scoring(documents, all_keywords, persona, job_to_be_done)
+        stage2_sections = self._generic_semantic_ranking(stage1_sections, persona, job_to_be_done)
+        
+        # Generate generic refined subsections
+        subsection_analysis = self._generic_subsection_analysis(stage2_sections, persona, job_to_be_done)
         
         return {
-            "extracted_sections": extracted_sections[:10],
-            "subsection_analysis": subsection_analysis[:8]  # Corrected key name
+            "extracted_sections": stage2_sections[:15],
+            "subsection_analysis": subsection_analysis[:10]
         }
+    
+    def _extract_keywords(self, text: str) -> List[str]:
+        """Generic keyword extraction from any text."""
+        # Simple but effective keyword extraction
+        words = re.findall(r'\b[a-zA-Z]{4,}\b', text.lower())
+        
+        # Remove common stop words
+        stop_words = {'this', 'that', 'with', 'have', 'will', 'from', 'they', 'been', 'their', 'said', 'each', 'which', 'what', 'where', 'when', 'would', 'there', 'could', 'other', 'after', 'first', 'well', 'also', 'some', 'only', 'know', 'think', 'just', 'more', 'very', 'good', 'much', 'make', 'take', 'than', 'many', 'most', 'over', 'such', 'even', 'here', 'work', 'life', 'time', 'year', 'years', 'people', 'world', 'should', 'being', 'through', 'these', 'those', 'still', 'right', 'under', 'while', 'never', 'again', 'something', 'everything'}
+        
+        keywords = [word for word in words if word not in stop_words and len(word) > 3]
+        
+        # Return unique keywords, limited to most important ones
+        return list(set(keywords))[:20]
+    
+    def _generic_content_scoring(self, documents: List[Dict], keywords: List[str], persona: str, job: str) -> List[Dict]:
+        """Generic content scoring based on keyword relevance."""
+        
+        all_sections = []
+        
+        for doc in documents:
+            for section in doc['sections']:
+                title = section['title'].lower()
+                content = section['content'].lower()
+                
+                # Generic scoring based on keyword matching
+                score = 0
+                
+                # Keyword relevance (generic approach)
+                for keyword in keywords:
+                    if keyword in title:
+                        score += 3  # Title matches are important
+                    score += content.count(keyword) * 0.5
+                
+                # Content quality indicators (generic)
+                content_length = len(section['content'])
+                if content_length > 200:
+                    score += 1
+                if content_length > 500:
+                    score += 1
+                if content_length > 1000:
+                    score += 1
+                
+                # Section title quality (generic patterns)
+                if any(pattern in title for pattern in ['introduction', 'overview', 'summary', 'conclusion', 'abstract', 'methodology', 'analysis', 'results', 'discussion']):
+                    score += 2
+                
+                all_sections.append({
+                    "document": doc['filename'],
+                    "section_title": section['title'],
+                    "page_number": section['page'],
+                    "content": section['content'],
+                    "content_score": score
+                })
+        
+        # Sort by content score
+        all_sections.sort(key=lambda x: -x['content_score'])
+        return all_sections[:25]  # Top 25 for semantic analysis
+    
+    def _generic_semantic_ranking(self, sections: List[Dict], persona: str, job: str) -> List[Dict]:
+        """Generic semantic similarity ranking."""
+        
+        try:
+            # Create generic query from persona and job
+            query_text = f"{persona} working on {job}"
+            query_embedding = self._get_embedding(query_text)
+            
+            # Get embeddings for all sections
+            for section in sections:
+                section_text = f"{section['section_title']} {section['content'][:400]}"
+                section_embedding = self._get_embedding(section_text)
+                
+                # Calculate semantic similarity
+                similarity = cosine_similarity(
+                    query_embedding.reshape(1, -1),
+                    section_embedding.reshape(1, -1)
+                )[0][0]
+                
+                # Combine content score and semantic similarity
+                final_score = (0.4 * section['content_score']) + (0.6 * similarity * 100)
+                section['final_score'] = final_score
+            
+            print("✅ Generic semantic ranking completed")
+            
+        except Exception as e:
+            print(f"⚠️ Semantic ranking failed, using content scores: {e}")
+            for section in sections:
+                section['final_score'] = section['content_score']
+        
+        # Final ranking
+        sections.sort(key=lambda x: -x['final_score'])
+        
+        # Assign importance ranks and clean up
+        for i, section in enumerate(sections, 1):
+            section['importance_rank'] = i
+            del section['content_score']
+            del section['final_score']
+        
+        return sections
+    
+    def _generic_subsection_analysis(self, sections: List[Dict], persona: str, job: str) -> List[Dict]:
+        """Generic subsection analysis without hardcoded rules."""
+        
+        subsections = []
+        
+        for section in sections[:8]:  # Top 8 sections
+            # Generic text refinement based on content analysis
+            content = section['content']
+            
+            # Generic summarization approach
+            sentences = content.split('.')[:3]  # First 3 sentences
+            summary = '. '.join(sentences).strip()
+            
+            if len(summary) < 100:  # If too short, add more content
+                summary = content[:300] + "..." if len(content) > 300 else content
+            
+            # Generic refinement that works for any persona/job
+            refined_text = f"Relevant to your role as {persona} and task '{job}': {summary}"
+            
+            # Ensure reasonable length
+            if len(refined_text) > 500:
+                refined_text = refined_text[:497] + "..."
+            
+            subsections.append({
+                "document": section['document'],
+                "refined_text": refined_text,
+                "page_number": section['page_number']
+            })
+            
+            # Clean up section content
+            del section['content']
+        
+        return subsections
+    
+    def _get_embedding(self, text: str) -> np.ndarray:
+        """Get DistilBERT embedding for text."""
+        inputs = self.tokenizer(
+            text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512,
+            padding=True
+        )
+        
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            embedding = outputs.last_hidden_state[:, 0, :].squeeze().numpy()
+        
+        return embedding
