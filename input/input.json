@@ -1,43 +1,51 @@
 {
     "challenge_info": {
-        "challenge_id": "round_1b_002",
-        "test_case_name": "travel_planner",
-        "description": "France Travel"
+        "challenge_id": "round_1b_001",
+        "test_case_name": "menu_planning",
+        "description": "Dinner menu planning"
     },
     "documents": [
         {
-            "filename": "South of France - Cities.pdf",
-            "title": "South of France - Cities"
+            "filename": "Breakfast Ideas.pdf",
+            "title": "Breakfast Ideas"
         },
         {
-            "filename": "South of France - Cuisine.pdf",
-            "title": "South of France - Cuisine"
+            "filename": "Dinner Ideas - Mains_1.pdf",
+            "title": "Dinner Ideas - Mains_1"
         },
         {
-            "filename": "South of France - History.pdf",
-            "title": "South of France - History"
+            "filename": "Dinner Ideas - Mains_2.pdf",
+            "title": "Dinner Ideas - Mains_2"
         },
         {
-            "filename": "South of France - Restaurants and Hotels.pdf",
-            "title": "South of France - Restaurants and Hotels"
+            "filename": "Dinner Ideas - Mains_3.pdf",
+            "title": "Dinner Ideas - Mains_3"
         },
         {
-            "filename": "South of France - Things to Do.pdf",
-            "title": "South of France - Things to Do"
+            "filename": "Dinner Ideas - Sides_1.pdf",
+            "title": "Dinner Ideas - Sides_1"
         },
         {
-            "filename": "South of France - Tips and Tricks.pdf",
-            "title": "South of France - Tips and Tricks"
+            "filename": "Dinner Ideas - Sides_2.pdf",
+            "title": "Dinner Ideas - Sides_2"
         },
         {
-            "filename": "South of France - Traditions and Culture.pdf",
-            "title": "South of France - Traditions and Culture"
+            "filename": "Dinner Ideas - Sides_3.pdf",
+            "title": "Dinner Ideas - Sides_3"
+        },
+        {
+            "filename": "Dinner Ideas - Sides_4.pdf",
+            "title": "Dinner Ideas - Sides_4"
+        },
+        {
+            "filename": "Lunch Ideas.pdf",
+            "title": "Lunch Ideas"
         }
     ],
     "persona": {
-        "role": "Travel Planner"
+        "role": "Food Contractor"
     },
     "job_to_be_done": {
-        "task": "Plan a trip of 4 days for a group of 10 college friends."
+        "task": "Prepare a vegetarian buffet-style dinner menu for a corporate gathering, including gluten-free items."
     }
 }
