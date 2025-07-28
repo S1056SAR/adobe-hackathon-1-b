@@ -1,13 +1,11 @@
 # requirements.txt
 PyMuPDF==1.24.1
 pytesseract
-torch==2.2.2
+torch # Let pip choose the latest compatible CPU version
 transformers
 accelerate
-bitsandbytes
+llama-cpp-python
 sentence-transformers
 chromadb
-# Pin numpy to a stable version < 2.0 to avoid compatibility issues
 numpy<2.0
-# Add the missing package for lexical search
 rank-bm25
