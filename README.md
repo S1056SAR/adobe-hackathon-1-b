@@ -76,7 +76,7 @@ This project is fully containerized using Docker, ensuring a consistent and repr
 
 1.  **Clone the Repository:**
     ```
-    git clone <your_repo_url>
+    git clone https://github.com/S1056SAR/adobe-hackathon-1-b
     cd <your_repo_name>
     ```
 
