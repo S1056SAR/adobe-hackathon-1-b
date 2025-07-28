@@ -1,40 +1,35 @@
-FROM --platform=linux/amd64 python:3.11-slim
+# Use the official Python 3.10 slim image as a base
+FROM --platform=linux/amd64 python:3.10-slim
 
+# Set the working directory in the container
 WORKDIR /app
 
-# Install dependencies
+# Install system dependencies required for PyMuPDF and Tesseract OCR
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr \
+    tesseract-ocr-eng \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy and install requirements
+# Copy requirements and the download script
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY download_models.py .
 
-# Copy download script
-COPY download_reliable_model.py /app/download_reliable_model.py
+# Install all Python dependencies
+# The --extra-index-url flag tells pip to use the PyTorch repo IN ADDITION to the default PyPI
+RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 
-# Download model with better error visibility
-RUN python download_reliable_model.py
+# --- This is the key change ---
+# Run the download script to fetch and save models into the image
+RUN python download_models.py
 
-# Debug: Show what was actually created
-RUN echo "=== DEBUGGING MODEL DIRECTORY ===" && \
-    ls -la /app/models/ && \
-    echo "=== DISTILBERT DIRECTORY CONTENTS ===" && \
-    ls -la /app/models/distilbert/ || echo "DistilBERT directory does not exist" && \
-    echo "=== DISTILGPT2 DIRECTORY CONTENTS ===" && \
-    ls -la /app/models/distilgpt2/ || echo "DistilGPT2 directory does not exist"
+# Now, copy the rest of your application code
+COPY src/ ./src/
+# The prompt.txt will be mounted via volume, so no need to copy it
+# COPY prompt.txt .
 
-# Verify model exists (adjust path based on which model you used)
-RUN test -f /app/models/distilbert/config.json || test -f /app/models/distilgpt2/config.json || (echo "❌ No model found!" && exit 1)
+# Set an environment variable to ensure Python output is sent straight to the terminal
+ENV PYTHONUNBUFFERED=1
 
-# Copy source code
-COPY src/ /app/src/
-
-# Set environment
-ENV HF_HOME=/app/models
-ENV TRANSFORMERS_CACHE=/app/models
-ENV HF_HUB_OFFLINE=1
-ENV TRANSFORMERS_OFFLINE=1
-
-CMD ["python", "src/main.py"]
+# Specify the command to run on container startup
+ENTRYPOINT ["python", "-m", "src.main"]
